@@ -9,7 +9,6 @@
    - `DATA_GO_KR_SERVICE_KEY`: 기존 공공데이터포털 인증키
    - `APP_ACCESS_CODE`: 직원 공용 로그인 비밀번호
    - `NODE_ENV`: `production`
-   - `PAX_FLT_SCHED_SERVICE_KEY`: 정기운항편 API 키 (기존 키와 동일하면 생략 가능; `DATA_GO_KR_SERVICE_KEY`를 자동 재사용)
 7. 배포 후 `https://서비스주소/health` 접속해 `ok: true` 확인
 
 인증키와 비밀번호를 소스코드에 입력하거나 GitHub에 올리지 마세요.

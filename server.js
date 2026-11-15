@@ -7,7 +7,7 @@ const app=express(); const __dirname=path.dirname(fileURLToPath(import.meta.url)
 const PORT=process.env.PORT||3000; const SERVICE_KEY=process.env.DATA_GO_KR_SERVICE_KEY; const ACCESS_CODE=process.env.APP_ACCESS_CODE;
 const SCHEDULE_SERVICE_KEY=process.env.PAX_FLT_SCHED_SERVICE_KEY||SERVICE_KEY;
 function key(v){if(!v)return v;try{return decodeURIComponent(v)}catch{return v}}
-const normalizedServiceKey = key;
+function normalizedServiceKey(v){return key(v)}
 app.use(helmet({contentSecurityPolicy:false})); app.use(express.json({limit:'20kb'})); app.use('/api/',rateLimit({windowMs:60000,limit:90})); app.use(express.static(path.join(__dirname,'public')));
 const cache=new Map();
 app.post('/api/login',(req,res)=>{if(!ACCESS_CODE)return res.status(503).json({message:'서버 접근 비밀번호가 설정되지 않았습니다.'});if(req.body?.code!==ACCESS_CODE)return res.status(401).json({message:'비밀번호가 올바르지 않습니다.'});res.json({ok:true})});

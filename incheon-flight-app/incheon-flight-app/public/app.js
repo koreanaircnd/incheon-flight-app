@@ -2,10 +2,14 @@ const $ = id => document.getElementById(id);
 let direction = 'arrival', flights = [], loggedIn = false;
 const today = new Date(); $('date').value = new Date(today.getTime()-today.getTimezoneOffset()*60000).toISOString().slice(0,10);
 $('loginBtn').addEventListener('click', async () => {
-  const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:$('accessCode').value})});
-  const d = await r.json();
-  if (!r.ok) { $('loginMsg').textContent = d.message || '로그인 실패'; return; }
-  loggedIn = true; $('loginPanel').hidden = true; $('appPanel').hidden = false; loadFlights();
+  const button = $('loginBtn'); button.disabled = true; $('loginMsg').textContent = '로그인 확인 중…';
+  try {
+    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:$('accessCode').value})});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { $('loginMsg').textContent = d.message || `로그인 실패 (HTTP ${r.status})`; return; }
+    loggedIn = true; $('loginPanel').hidden = true; $('appPanel').hidden = false; loadFlights();
+  } catch (e) { $('loginMsg').textContent = '서버 연결 오류: ' + e.message; }
+  finally { button.disabled = false; }
 });
 document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{direction=b.dataset.dir;document.querySelectorAll('[data-dir]').forEach(x=>x.classList.toggle('active',x===b));loadFlights()}));
 $('refreshBtn').onclick = loadFlights; $('date').onchange = loadFlights; $('filter').oninput = render; $('terminal').onchange = render;
@@ -169,7 +173,7 @@ function airlineBrand(code) {
     OZ:{color:'#9b1b36',bg:'#f8e9ed',logo:'/airline-logos/OZ.svg'},
     LJ:{color:'#00a5e5',bg:'#e6f7fd',logo:'/airline-logos/LJ.svg'},
     TW:{color:'#d71920',bg:'#fcebed',logo:'/airline-logos/TW.svg'},
-    7C:{color:'#f58220',bg:'#fff1e5',logo:'/airline-logos/7C.svg'},
+    '7C':{color:'#f58220',bg:'#fff1e5',logo:'/airline-logos/7C.svg'},
     BX:{color:'#f36f21',bg:'#fff0e7',logo:'/airline-logos/BX.svg'},
     RS:{color:'#c8102e',bg:'#f9e9ed',logo:'/airline-logos/RS.svg'},
     ZE:{color:'#f5b324',bg:'#fff7df',logo:'/airline-logos/ZE.svg'},
