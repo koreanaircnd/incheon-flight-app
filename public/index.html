@@ -10,10 +10,46 @@
 <main>
 <section id="loginPanel" class="panel"><h2>직원 로그인</h2><input id="accessCode" type="password" placeholder="공용 접속 비밀번호"><button id="loginBtn">로그인</button><p id="loginMsg" class="msg"></p></section>
 <section id="appPanel" class="panel" hidden>
+<div class="tabs menu-tabs"><button id="liveMenu" class="active">실시간 운항현황</button><button id="scheduleMenu">정기운항편 일정</button><button id="airlineMenu">항공사별 스케줄</button></div>
+<div id="livePanel">
 <div class="toolbar"><label>조회 날짜 <input type="date" id="date"></label><button id="refreshBtn">새로고침</button></div>
 <div class="tabs"><button data-dir="arrival" class="active">도착</button><button data-dir="departure">출발</button></div>
 <div class="toolbar"><input id="filter" placeholder="항공사 또는 편명 검색"><select id="terminal"><option value="">전체 터미널</option><option value="P01">제1터미널</option><option value="P02">탑승동</option><option value="P03">제2터미널</option></select></div>
 <p id="status" class="msg">조회 날짜를 선택해 주세요.</p><div id="results"></div>
+</div>
+<div id="schedulePanel" hidden>
+ <p class="msg">정기운항편은 실시간 운항상태가 아닌 시즌별 정기 운항 일정입니다.</p>
+ <div class="tabs"><button data-sdir="arrival" class="active">도착 정기편</button><button data-sdir="departure">출발 정기편</button></div>
+ <div class="toolbar">
+  <input id="scheduleSearch" placeholder="편명 검색 (예: OZ730)">
+  <input id="airportCode" maxlength="3" placeholder="상대 공항 IATA 코드 (예: HAN)">
+  <input id="season" placeholder="시즌 검색 (예: W26)">
+  <button id="scheduleSearchBtn">정기편 조회</button>
+ </div>
+ <p id="scheduleStatus" class="msg">조회 조건을 선택하고 정기편 조회를 눌러주세요.</p><div id="scheduleResults"></div>
+</div>
+
+<div id="airlinePanel" hidden>
+ <div class="airline-heading">
+  <div><h2>항공사별 운항 스케줄</h2><p class="msg">항공사를 선택하면 해당 항공사의 정기운항 일정을 확인할 수 있습니다.</p></div>
+  <button id="airlineRefreshBtn" type="button">항공사 목록 새로고침</button>
+ </div>
+ <p id="airlineStatus" class="msg">항공사 목록을 불러오는 중입니다.</p>
+ <div id="airlineDirectory" class="airline-grid"></div>
+ <section id="airlineDetail" class="airline-detail" hidden>
+  <div class="airline-detail-head">
+   <button id="airlineBackBtn" class="secondary-btn" type="button">← 전체 항공사</button>
+   <div id="selectedAirlineIdentity" class="selected-airline-identity"></div>
+  </div>
+  <div class="tabs"><button data-adir="arrival" class="active">도착 정기편</button><button data-adir="departure">출발 정기편</button></div>
+  <div class="toolbar">
+   <input id="airlineFlightFilter" placeholder="선택 항공사 편명 검색">
+   <input id="airlineSeasonFilter" placeholder="시즌 검색 (예: W26)">
+  </div>
+  <p id="airlineDetailStatus" class="msg"></p>
+  <div id="airlineScheduleResults"></div>
+ </section>
+</div>
 </section>
 </main><footer>자료 제공: 공공데이터포털 · 운항 정보는 실제 운항 상황에 따라 변경될 수 있습니다.</footer>
 <script src="/app.js"></script>
