@@ -51,18 +51,14 @@ document.querySelectorAll('[data-sdir]').forEach(b => b.addEventListener('click'
 }));
 $('scheduleSearchBtn').addEventListener('click', loadScheduledFlights);
 $('scheduleSearch').addEventListener('keydown', e => { if (e.key === 'Enter') loadScheduledFlights(); });
+$('airportCode').addEventListener('keydown', e => { if (e.key === 'Enter') loadScheduledFlights(); });
+
 async function loadScheduledFlights() {
   if (!loggedIn) return;
   $('scheduleStatus').textContent = '정기운항편 일정을 조회하고 있습니다…';
-  const params = new URLSearchParams({ direction: scheduleDirection });
-  const flightId = $('scheduleSearch').value.trim();
-  const airportCode = $('airportCode').value.trim().toUpperCase();
-  const season = $('season').value.trim().toUpperCase();
-  const terminalId = $('scheduleTerminal').value;
-  if (flightId) params.set('flightId', flightId);
-  if (airportCode) params.set('airportCode', airportCode);
-  if (season) params.set('season', season);
-  if (terminalId) params.set('terminalId', terminalId);
+  const params = new URLSearchParams({ direction: scheduleDirection, numOfRows: '1000' });
+  const airport = $('airportCode').value.trim().toUpperCase();
+  if (airport) params.set('airport', airport);
   try {
     const r = await fetch(`/api/scheduled-flights?${params}`);
     const d = await r.json();
@@ -70,38 +66,47 @@ async function loadScheduledFlights() {
     const body = d?.response?.body || d?.body || {};
     const items = body?.items?.item ?? body?.items ?? d?.items?.item ?? d?.items ?? [];
     scheduledFlights = Array.isArray(items) ? items : (items ? [items] : []);
-    $('scheduleStatus').textContent = `${scheduledFlights.length}건 조회 · 정기운항 일정 정보`;
+    const total = body.totalCount ?? scheduledFlights.length;
+    $('scheduleStatus').textContent = `${scheduledFlights.length}건 표시 / 전체 ${total}건 · 시즌별 정기운항 일정`;
     renderScheduledFlights();
   } catch (e) {
     $('scheduleStatus').textContent = e.message;
     $('scheduleResults').innerHTML = '';
   }
 }
+
 function renderScheduledFlights() {
   const q = $('scheduleSearch').value.trim().toLowerCase();
-  const list = scheduledFlights.filter(f => !q || String(f.flightId || f.flight_id || '').toLowerCase().includes(q));
-  const fields = [
-    ['운항 항공사', ['airline','airlineName','airlineNm']],
-    ['편명', ['flightId','flight_id','masterFlightId']],
-    [scheduleDirection === 'arrival' ? '출발 공항' : '도착 공항', ['airport','airportName','airportNm']],
-    ['공항 코드', ['airportCode','airport_code']],
-    ['운항 시간', ['scheduleStartTime','scheduleTime','startTime']],
-    ['운항 시작일', ['scheduleStartDate','startDate','startDt']],
-    ['운항 종료일', ['scheduleEndDate','endDate','endDt']],
-    ['시즌', ['season','seasonName']],
-    ['터미널', ['terminalId','terminalid']],
-    ['요일 정보', ['dayOfWeek','weekday','sun','mon','tue','wed','thu','fri','sat']],
-    ['공동운항', ['codeshare','codeShare']],
-    ['마스터 편명', ['masterFlightId','masterFlight']]
+  const season = $('season').value.trim().toLowerCase();
+  const list = scheduledFlights.filter(f =>
+    (!q || `${f.flightid || ''} ${f.airline || ''}`.toLowerCase().includes(q)) &&
+    (!season || String(f.season || '').toLowerCase().includes(season))
+  );
+  const weekdays = [
+    ['월', 'monday'], ['화', 'tuesday'], ['수', 'wednesday'],
+    ['목', 'thursday'], ['금', 'friday'], ['토', 'saturday'], ['일', 'sunday']
   ];
   $('scheduleResults').innerHTML = list.map(f => {
-    const get = keys => keys.map(k => f[k]).find(v => v !== undefined && v !== null && v !== '');
-    const title = get(['airline','airlineName','airlineNm']) || '항공사 정보 없음';
-    const flight = get(['flightId','flight_id','masterFlightId']) || '편명 정보 없음';
-    const rows = fields.slice(2).map(([label, keys]) => {
-      const value = get(keys);
-      return value === undefined ? '' : `<div><b>${esc(label)}:</b> ${esc(Array.isArray(value) ? value.join(', ') : value)}</div>`;
-    }).join('');
-    return `<article class="flight"><strong>${esc(title)} · ${esc(flight)}</strong><div class="meta">${rows || '세부 일정 항목이 제공되지 않았습니다.'}</div></article>`;
+    const days = weekdays.filter(([, key]) => String(f[key] || '').toUpperCase() === 'Y').map(([day]) => day).join(' · ') || '운항 요일 정보 없음';
+    const time = String(f.st || '');
+    const formattedTime = time.length >= 4 ? `${time.slice(0,2)}:${time.slice(2,4)}` : (time || '-');
+    const dateRange = `${formatScheduleDate(f.firstdate)} ~ ${formatScheduleDate(f.lastdate)}`;
+    const share = String(f.codeshare || '').toLowerCase();
+    const shareLabel = share === 'master' ? '마스터편' : share === 'slave' ? '공동운항편' : (f.codeshare || '-');
+    const rows = [
+      [scheduleDirection === 'arrival' ? '출발 공항' : '도착 공항', `${f.airport || '-'} (${f.airportcode || '-'})`],
+      ['정기운항 시간', formattedTime],
+      ['운항 기간', dateRange],
+      ['운항 요일', days],
+      ['시즌', f.season || '-'],
+      ['공동운항 구분', shareLabel],
+      ['마스터 편명', f.masterflightid || '-']
+    ];
+    return `<article class="flight"><strong>${esc(f.airline || '항공사 정보 없음')} · ${esc(f.flightid || '편명 정보 없음')}</strong><div class="meta">${rows.map(([label,value]) => `<div><b>${esc(label)}:</b> ${esc(value)}</div>`).join('')}</div></article>`;
   }).join('') || '<p class="msg">조건에 맞는 정기운항편이 없습니다.</p>';
+}
+
+function formatScheduleDate(value) {
+  const s = String(value || '');
+  return /^\d{8}$/.test(s) ? `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}` : (s || '-');
 }

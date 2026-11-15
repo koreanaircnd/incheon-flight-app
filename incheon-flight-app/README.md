@@ -3,7 +3,7 @@
 ## Render 배포
 - Build Command: `npm install`
 - Start Command: `npm start`
-- 환경변수: `DATA_GO_KR_SERVICE_KEY`, `APP_ACCESS_CODE`, `NODE_ENV=production`
+- 환경변수: `DATA_GO_KR_SERVICE_KEY`, `APP_ACCESS_CODE`, `NODE_ENV=production` (선택: `PAX_FLT_SCHED_SERVICE_KEY`)
 - 헬스 확인 주소: `/health`
 
 ## 보안
@@ -11,3 +11,6 @@
 
 ## 중요
 현재 API 파라미터 및 응답 구조는 실제 서비스키로 배포 후 반드시 검증해야 합니다. 이 프로젝트는 배포·실 API 연결·APK 빌드가 완료된 상태가 아닙니다.
+
+
+정기운항편 메뉴는 `PAX_FLT_SCHED_SERVICE_KEY`를 사용하며, 미설정 시 기존 `DATA_GO_KR_SERVICE_KEY`를 재사용합니다. 정기운항편 API는 실시간 운항현황과 별도 데이터입니다.

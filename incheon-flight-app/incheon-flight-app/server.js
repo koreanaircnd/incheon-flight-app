@@ -64,37 +64,83 @@ app.get('/api/flights', async (req, res) => {
 
 
 
-// 여객기 정기운항편 일정 정보: 기존 실시간 운항현황 API와 별도 경로로 조회
+// 여객기 정기운항편 일정 정보: 기존 실시간 API와 분리
+function xmlValue(block, tag) {
+  const match = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+  if (!match) return '';
+  return match[1]
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'").trim();
+}
+
+function parseScheduleXml(xml) {
+  const itemBlocks = [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)];
+  const items = itemBlocks.map(match => {
+    const item = {};
+    for (const tag of [
+      'airline', 'airport', 'airportcode', 'codeshare', 'firstdate',
+      'flightid', 'friday', 'lastdate', 'monday', 'masterflightid',
+      'saturday', 'season', 'st', 'sunday', 'thursday', 'tuesday',
+      'wednesday', 'tmp1', 'tmp2'
+    ]) item[tag] = xmlValue(match[1], tag);
+    return item;
+  });
+  const header = xml.match(/<header(?:\s[^>]*)?>([\s\S]*?)<\/header>/i)?.[1] || xml;
+  const body = xml.match(/<body(?:\s[^>]*)?>([\s\S]*?)<\/body>/i)?.[1] || xml;
+  return {
+    response: {
+      header: { resultCode: xmlValue(header, 'resultCode'), resultMsg: xmlValue(header, 'resultMsg') },
+      body: {
+        items: { item: items },
+        numOfRows: Number(xmlValue(body, 'numOfRows') || items.length),
+        pageNo: Number(xmlValue(body, 'pageNo') || 1),
+        totalCount: Number(xmlValue(body, 'totalCount') || items.length)
+      }
+    }
+  };
+}
+
 app.get('/api/scheduled-flights', async (req, res) => {
   if (!SCHEDULE_SERVICE_KEY) return res.status(503).json({ message: '정기운항편 API 인증키가 서버에 설정되지 않았습니다.' });
   const direction = req.query.direction === 'departure' ? 'departure' : 'arrival';
   const operation = direction === 'arrival' ? 'getPaxFltSchedArrivals' : 'getPaxFltSchedDepartures';
   const params = {
     pageNo: String(req.query.pageNo || '1'),
-    numOfRows: String(req.query.numOfRows || '1000'),
+    numOfRows: String(Math.min(Number(req.query.numOfRows || 1000), 1000)),
+    lang: 'K',
     type: 'json'
   };
-  // API 명세에 있는 선택 검색조건만 전달
-  for (const key of ['flightId', 'season', 'terminalId', 'airport', 'airportCode', 'tmp1', 'tmp2']) {
-    const value = String(req.query[key] || '').trim();
-    if (value) params[key] = value;
+  const airport = String(req.query.airport || '').trim().toUpperCase();
+  if (airport) {
+    if (!/^[A-Z]{3}$/.test(airport)) return res.status(400).json({ message: '공항코드는 영문 3자리로 입력해 주세요.' });
+    params.airport = airport;
   }
   const cacheKey = `schedule:${direction}:${JSON.stringify(params)}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.time < 300_000) return res.json(cached.data);
+
   try {
     const url = new URL(`https://apis.data.go.kr/B551177/PaxFltSched/${operation}`);
     url.searchParams.set('serviceKey', normalizedServiceKey(SCHEDULE_SERVICE_KEY));
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    const response = await fetch(url, { headers: { Accept: 'application/json, application/xml, text/xml' } });
     const body = await response.text();
+    if (!response.ok) return res.status(502).json({ message: `정기운항편 API 오류 (HTTP ${response.status})`, detail: body.slice(0, 300) });
+
     let data;
-    try { data = JSON.parse(body); }
-    catch { return res.status(502).json({ message: `정기운항편 API가 JSON이 아닌 응답을 반환했습니다. (HTTP ${response.status})`, detail: body.slice(0, 500) }); }
+    try {
+      data = JSON.parse(body);
+    } catch {
+      if (!body.trim().startsWith('<')) {
+        return res.status(502).json({ message: '정기운항편 API 응답을 해석하지 못했습니다.', detail: body.slice(0, 300) });
+      }
+      data = parseScheduleXml(body);
+    }
     const resultCode = data?.response?.header?.resultCode ?? data?.header?.resultCode;
-    if (!response.ok || (resultCode && !['00', '0000'].includes(String(resultCode)))) {
-      const resultMsg = data?.response?.header?.resultMsg ?? data?.header?.resultMsg ?? body.slice(0, 300);
-      return res.status(502).json({ message: `정기운항편 API 오류 (HTTP ${response.status}): ${resultMsg}` });
+    if (resultCode && !['00', '0000'].includes(String(resultCode))) {
+      const resultMsg = data?.response?.header?.resultMsg ?? data?.header?.resultMsg ?? '알 수 없는 API 오류';
+      return res.status(502).json({ message: `정기운항편 API 오류: ${resultMsg}` });
     }
     cache.set(cacheKey, { time: Date.now(), data });
     res.json(data);
