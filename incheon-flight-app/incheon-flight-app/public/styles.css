@@ -20,3 +20,6 @@
 .selected-airline-identity>span:last-child{display:flex;flex-direction:column;gap:5px}
 .secondary-btn{background:#e8eef5;color:#234}
 @media(max-width:600px){.airline-heading>*{width:100%}.airline-grid{grid-template-columns:1fr}.airline-card{width:100%}}
+
+/* 실시간 운항현황 항공사 빠른 선택 */
+.airline-quick-filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}.airline-chip{display:inline-flex;align-items:center;gap:7px;background:#f8fafc;color:#203247;border:1px solid #d7e0ea;border-radius:999px;padding:7px 11px;font-size:13px}.airline-chip.selected{background:#164d80;color:#fff;border-color:#164d80}.airline-chip-mark{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:27px;padding:0 5px;border-radius:7px;background:#e6edf5;color:#164d80;font-weight:800;font-size:11px}.airline-chip.selected .airline-chip-mark{background:#fff;color:#164d80}.airline-chip small{opacity:.75;font-size:11px}@media(max-width:600px){.airline-quick-filters{gap:6px}.airline-chip{font-size:12px;padding:6px 9px}}
