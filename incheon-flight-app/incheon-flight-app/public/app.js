@@ -9,6 +9,28 @@ $('loginBtn').addEventListener('click', async () => {
 });
 document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{direction=b.dataset.dir;document.querySelectorAll('[data-dir]').forEach(x=>x.classList.toggle('active',x===b));loadFlights()}));
 $('refreshBtn').onclick = loadFlights; $('date').onchange = loadFlights; $('filter').oninput = render; $('terminal').onchange = render;
+
+function firstValue(obj, keys) {
+  for (const key of keys) if (obj?.[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
+  return '';
+}
+function normalizeLiveFlight(f) {
+  return {
+    ...f,
+    airline: firstValue(f, ['airline','airlineName','airlineKor','airlineNm']),
+    flightId: firstValue(f, ['flightId','flightid','flightNo','flight']),
+    airport: firstValue(f, ['airport','airportName','airportNm','airportKor']),
+    airportCode: firstValue(f, ['airportCode','airportcode']),
+    scheduleDateTime: firstValue(f, ['scheduleDateTime','scheduleDatetime','scheduleDate','scheduleTime','schedule']),
+    estimatedDateTime: firstValue(f, ['estimatedDateTime','estimatedDatetime','changeDateTime','estimatedTime']),
+    terminalid: firstValue(f, ['terminalid','terminalId','terminal','terminalCode']),
+    gatenumber: firstValue(f, ['gatenumber','gateNumber','gate']),
+    carousel: firstValue(f, ['carousel','carouselNo','baggageClaim']),
+    chkinrange: firstValue(f, ['chkinrange','checkInCounter','chkinRange']),
+    remark: firstValue(f, ['remark','status','flightStatus','rmk'])
+  };
+}
+
 async function loadFlights(){
  if(!loggedIn)return;
  $('status').textContent='운항 정보를 조회하고 있습니다…';
@@ -16,9 +38,11 @@ async function loadFlights(){
   const r=await fetch(`/api/flights?direction=${direction}&date=${$('date').value}`);
   const d=await r.json(); if(!r.ok)throw new Error(d.message||'조회 실패');
   const body=d?.response?.body || d?.body || {};
-  const items=body?.items?.item ?? body?.items ?? [];
-  flights=Array.isArray(items)?items:(items?[items]:[]);
-  $('status').textContent=`${flights.length}건 조회 · 1분마다 자동 갱신`;
+  const raw=body?.items?.item ?? body?.items ?? d?.items?.item ?? d?.items ?? [];
+  const items=Array.isArray(raw)?raw:(raw?[raw]:[]);
+  flights=items.map(normalizeLiveFlight);
+  const total=body?.totalCount ?? flights.length;
+  $('status').textContent=`${flights.length}건 표시 / 전체 ${total}건 · 1분마다 자동 갱신`;
   render();
  }catch(e){$('status').textContent=e.message;$('results').innerHTML='';}
 }
@@ -223,7 +247,7 @@ function renderAirlineDirectory() {
   $('airlineDirectory').innerHTML = airlineDirectory.map((a, index) => {
     const brand = airlineBrand(a.code);
     return `<button type="button" class="airline-card" data-airline-index="${index}">
-      <span class="airline-mark" style="--brand:${brand.color};--brand-bg:${brand.bg}">${esc(a.code)}</span>
+      <span class="airline-mark" style="--brand:${brand.color};--brand-bg:${brand.bg}"><img class="airline-logo-img" src="/airline-logos/${encodeURIComponent(a.code)}.svg" alt="${esc(a.name)} 로고" onerror="this.remove();this.parentElement.textContent='${esc(a.code)}'"></span>
       <span class="airline-card-copy"><strong>${esc(a.name)}</strong><small>${esc(a.code)} · 도착 ${a.arrivalCount}편 · 출발 ${a.departureCount}편</small></span>
       <span class="airline-arrow">›</span>
     </button>`;
@@ -240,7 +264,7 @@ function selectAirline(airline) {
   $('airlineDirectory').hidden = true;
   $('airlineDetail').hidden = false;
   const brand = airlineBrand(airline.code);
-  $('selectedAirlineIdentity').innerHTML = `<span class="airline-mark large" style="--brand:${brand.color};--brand-bg:${brand.bg}">${esc(airline.code)}</span><span><strong>${esc(airline.name)}</strong><small>${esc(airline.code)} · 항공사 정기운항 스케줄</small></span>`;
+  $('selectedAirlineIdentity').innerHTML = `<span class="airline-mark large" style="--brand:${brand.color};--brand-bg:${brand.bg}"><img class="airline-logo-img" src="/airline-logos/${encodeURIComponent(airline.code)}.svg" alt="${esc(airline.name)} 로고" onerror="this.remove();this.parentElement.textContent='${esc(airline.code)}'"></span><span><strong>${esc(airline.name)}</strong><small>${esc(airline.code)} · 항공사 정기운항 스케줄</small></span>`;
   renderSelectedAirlineSchedule();
 }
 function renderSelectedAirlineSchedule() {
