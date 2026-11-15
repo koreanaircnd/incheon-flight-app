@@ -9,28 +9,6 @@ $('loginBtn').addEventListener('click', async () => {
 });
 document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{direction=b.dataset.dir;document.querySelectorAll('[data-dir]').forEach(x=>x.classList.toggle('active',x===b));loadFlights()}));
 $('refreshBtn').onclick = loadFlights; $('date').onchange = loadFlights; $('filter').oninput = render; $('terminal').onchange = render;
-
-function firstValue(obj, keys) {
-  for (const key of keys) if (obj?.[key] !== undefined && obj[key] !== null && obj[key] !== '') return obj[key];
-  return '';
-}
-function normalizeLiveFlight(f) {
-  return {
-    ...f,
-    airline: firstValue(f, ['airline','airlineName','airlineKor','airlineNm']),
-    flightId: firstValue(f, ['flightId','flightid','flightNo','flight']),
-    airport: firstValue(f, ['airport','airportName','airportNm','airportKor']),
-    airportCode: firstValue(f, ['airportCode','airportcode']),
-    scheduleDateTime: firstValue(f, ['scheduleDateTime','scheduleDatetime','scheduleDate','scheduleTime','schedule']),
-    estimatedDateTime: firstValue(f, ['estimatedDateTime','estimatedDatetime','changeDateTime','estimatedTime']),
-    terminalid: firstValue(f, ['terminalid','terminalId','terminal','terminalCode']),
-    gatenumber: firstValue(f, ['gatenumber','gateNumber','gate']),
-    carousel: firstValue(f, ['carousel','carouselNo','baggageClaim']),
-    chkinrange: firstValue(f, ['chkinrange','checkInCounter','chkinRange']),
-    remark: firstValue(f, ['remark','status','flightStatus','rmk'])
-  };
-}
-
 async function loadFlights(){
  if(!loggedIn)return;
  $('status').textContent='운항 정보를 조회하고 있습니다…';
@@ -38,11 +16,9 @@ async function loadFlights(){
   const r=await fetch(`/api/flights?direction=${direction}&date=${$('date').value}`);
   const d=await r.json(); if(!r.ok)throw new Error(d.message||'조회 실패');
   const body=d?.response?.body || d?.body || {};
-  const raw=body?.items?.item ?? body?.items ?? d?.items?.item ?? d?.items ?? [];
-  const items=Array.isArray(raw)?raw:(raw?[raw]:[]);
-  flights=items.map(normalizeLiveFlight);
-  const total=body?.totalCount ?? flights.length;
-  $('status').textContent=`${flights.length}건 표시 / 전체 ${total}건 · 1분마다 자동 갱신`;
+  const items=body?.items?.item ?? body?.items ?? [];
+  flights=Array.isArray(items)?items:(items?[items]:[]);
+  $('status').textContent=`${flights.length}건 조회 · 1분마다 자동 갱신`;
   render();
  }catch(e){$('status').textContent=e.message;$('results').innerHTML='';}
 }
@@ -188,19 +164,18 @@ function airlineCodeFromFlight(f) {
   return match ? match[1] : 'ETC';
 }
 function airlineBrand(code) {
-  const brands = {
-    KE: { color: '#07539b', bg: '#e7f1fb', mark: '대한항공' },
-    OZ: { color: '#8b1e5a', bg: '#f8eaf2', mark: '아시아나' },
-    LJ: { color: '#c92b35', bg: '#fff0f0', mark: '진에어' },
-    '7C': { color: '#f07819', bg: '#fff2e5', mark: '제주항공' },
-    TW: { color: '#c92732', bg: '#fff0f1', mark: '티웨이' },
-    BX: { color: '#087b9a', bg: '#e7f6fa', mark: '에어부산' },
-    RS: { color: '#c6293b', bg: '#fff0f2', mark: '에어서울' },
-    ZE: { color: '#5a9b35', bg: '#eff8e9', mark: '이스타' },
-    YP: { color: '#153e73', bg: '#eaf0f8', mark: '에어프레미아' },
-    '8Y': { color: '#4d5c77', bg: '#edf0f5', mark: '화물항공' }
+  const known = {
+    KE:{color:'#123b75',bg:'#eaf0f8',logo:'/airline-logos/KE.svg'},
+    OZ:{color:'#9b1b36',bg:'#f8e9ed',logo:'/airline-logos/OZ.svg'},
+    LJ:{color:'#00a5e5',bg:'#e6f7fd',logo:'/airline-logos/LJ.svg'},
+    TW:{color:'#d71920',bg:'#fcebed',logo:'/airline-logos/TW.svg'},
+    7C:{color:'#f58220',bg:'#fff1e5',logo:'/airline-logos/7C.svg'},
+    BX:{color:'#f36f21',bg:'#fff0e7',logo:'/airline-logos/BX.svg'},
+    RS:{color:'#c8102e',bg:'#f9e9ed',logo:'/airline-logos/RS.svg'},
+    ZE:{color:'#f5b324',bg:'#fff7df',logo:'/airline-logos/ZE.svg'},
+    YP:{color:'#174b8c',bg:'#eaf0f8',logo:'/airline-logos/YP.svg'}
   };
-  return brands[code] || { color: '#315b83', bg: '#edf3f8', mark: code === 'ETC' ? '기타' : code };
+  return known[code] || {color:'#526174',bg:'#edf1f5',logo:''};
 }
 function normalizeAirlineName(f) {
   return String(f.airline || f.airlineName || '항공사 정보 없음').trim();
@@ -247,7 +222,7 @@ function renderAirlineDirectory() {
   $('airlineDirectory').innerHTML = airlineDirectory.map((a, index) => {
     const brand = airlineBrand(a.code);
     return `<button type="button" class="airline-card" data-airline-index="${index}">
-      <span class="airline-mark" style="--brand:${brand.color};--brand-bg:${brand.bg}"><img class="airline-logo-img" src="/airline-logos/${encodeURIComponent(a.code)}.svg" alt="${esc(a.name)} 로고" onerror="this.remove();this.parentElement.textContent='${esc(a.code)}'"></span>
+      <span class="airline-mark" style="--brand:${brand.color};--brand-bg:${brand.bg}">${brand.logo ? `<img src="${brand.logo}" alt="${esc(a.name)} 로고" onerror="this.remove()">` : esc(a.code)}</span>
       <span class="airline-card-copy"><strong>${esc(a.name)}</strong><small>${esc(a.code)} · 도착 ${a.arrivalCount}편 · 출발 ${a.departureCount}편</small></span>
       <span class="airline-arrow">›</span>
     </button>`;
@@ -264,7 +239,7 @@ function selectAirline(airline) {
   $('airlineDirectory').hidden = true;
   $('airlineDetail').hidden = false;
   const brand = airlineBrand(airline.code);
-  $('selectedAirlineIdentity').innerHTML = `<span class="airline-mark large" style="--brand:${brand.color};--brand-bg:${brand.bg}"><img class="airline-logo-img" src="/airline-logos/${encodeURIComponent(airline.code)}.svg" alt="${esc(airline.name)} 로고" onerror="this.remove();this.parentElement.textContent='${esc(airline.code)}'"></span><span><strong>${esc(airline.name)}</strong><small>${esc(airline.code)} · 항공사 정기운항 스케줄</small></span>`;
+  $('selectedAirlineIdentity').innerHTML = `<span class="airline-mark large" style="--brand:${brand.color};--brand-bg:${brand.bg}">${brand.logo ? `<img src="${brand.logo}" alt="${esc(airline.name)} 로고" onerror="this.remove()">` : esc(airline.code)}</span><span><strong>${esc(airline.name)}</strong><small>${esc(airline.code)} · 항공사 정기운항 스케줄</small></span>`;
   renderSelectedAirlineSchedule();
 }
 function renderSelectedAirlineSchedule() {
