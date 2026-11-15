@@ -36,8 +36,11 @@ const airlineCodeByName = {
 function liveAirlineInfo(f){
  const name=String(f.airline||'항공사 미상').trim();
  const flight=String(f.flightId||'').trim().toUpperCase();
- const prefix=(flight.match(/^([A-Z0-9]{2,3})/)||[])[1]||'';
- const code=prefix || airlineCodeByName[name] || (/^[A-Z0-9]{2,3}$/.test(name)?name:'');
+ // IATA 항공사 코드는 2자리로 통일합니다. KE1, KE2처럼 뒤에
+ // 숫자가 붙은 운항 식별자는 KE로 묶고, 7C/3U 등 숫자로 시작하는 코드도 보존합니다.
+ const prefix=(flight.match(/^([A-Z0-9]{2})/)||[])[1]||'';
+ // 항공사명이 확인되면 이름 기반 대표 코드를 우선해 코드 변형을 통합합니다.
+ const code=airlineCodeByName[name] || prefix || (/^[A-Z0-9]{2,3}$/.test(name)?name.replace(/\d+$/,''):'' );
  return {key:code||name,code:code||name.slice(0,3),name};
 }
 $('airlineQuickFilters').addEventListener('click',e=>{
