@@ -18,7 +18,7 @@ async function loadFlights(){
  $('status').textContent='운항 정보를 조회하고 있습니다…';
  try{
   const r=await fetch(`/api/flights?direction=${direction}&date=${$('date').value}`);
-  const d=await r.json(); if(!r.ok)throw new Error(d.message||'조회 실패');
+  const d=await r.json().catch(()=>({})); if(!r.ok){const detail=d.detail?`\n상세: ${String(d.detail).slice(0,350)}`:'';throw new Error((d.message||`조회 실패 (HTTP ${r.status})`)+detail);}
   const body=d?.response?.body || d?.body || {};
   const items=body?.items?.item ?? body?.items ?? [];
   flights=Array.isArray(items)?items:(items?[items]:[]);

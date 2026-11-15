@@ -3,7 +3,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
-const app=express(); const __dirname=path.dirname(fileURLToPath(import.meta.url));
+const app=express();
+// Render runs behind one trusted reverse proxy.
+app.set('trust proxy', 1);
+const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const PORT=process.env.PORT||3000; const SERVICE_KEY=process.env.DATA_GO_KR_SERVICE_KEY; const ACCESS_CODE=process.env.APP_ACCESS_CODE;
 const SCHEDULE_SERVICE_KEY=process.env.PAX_FLT_SCHED_SERVICE_KEY||SERVICE_KEY;
 function key(v){if(!v)return v;try{return decodeURIComponent(v)}catch{return v}}
